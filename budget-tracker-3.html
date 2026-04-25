@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Home Budget Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;1,9..144,300&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --bg: #0f0f0e;
+    --surface: #1a1a18;
+    --surface2: #242422;
+    --border: #2e2e2b;
+    --accent: #c8f06e;
+    --accent2: #f06e6e;
+    --accent3: #6eb5f0;
+    --text: #e8e8e2;
+    --muted: #7a7a72;
+    --font-display: 'Fraunces', serif;
+    --font-mono: 'DM Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    min-height: 100vh;
+  }
+
+  /* ── Layout ── */
+  .app { display: flex; flex-direction: column; min-height: 100vh; }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: var(--font-display);
+    font-size: 22px;
+    font-weight: 600;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  .logo span { color: var(--muted); font-weight: 300; font-style: italic; }
+
+  .header-right { display: flex; align-items: center; gap: 12px; }
+
+  .sync-status {
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .sync-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: background 0.3s;
+  }
+  .sync-dot.ok { background: var(--accent); }
+  .sync-dot.err { background: var(--accent2); }
+  .sync-dot.syncing { background: var(--accent3); animation: pulse 1s infinite; }
+
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  nav {
+    display: flex;
+    gap: 2px;
+    padding: 12px 24px 0;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    overflow-x: auto;
+  }
+
+  .nav-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 8px 16px;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    white-space: nowrap;
+    transition: color 0.2s, border-color 0.2s;
+  }
+  .nav-btn:hover { color: var(--text); }
+  .nav-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--accent2);
+    color: var(--bg);
+    border-radius: 8px;
+    font-size: 10px;
+    font-weight: 500;
+    padding: 1px 5px;
+    margin-left: 5px;
+    min-width: 18px;
+  }
+
+  main { flex: 1; padding: 24px; max-width: 1100px; margin: 0 auto; width: 100%; }
+
+  /* ── Panels ── */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .card-title {
+    font-family: var(--font-display);
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text);
+  }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+
+  @media (max-width: 700px) {
+    .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    main { padding: 16px; }
+  }
+
+  /* ── Stat tiles ── */
+  .stat {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+  }
+  .stat-label { font-size: 11px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat-value { font-family: var(--font-display); font-size: 28px; font-weight: 300; }
+  .stat-value.positive { color: var(--accent); }
+  .stat-value.negative { color: var(--accent2); }
+  .stat-value.neutral { color: var(--accent3); }
+  .stat-sub { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .btn:hover { background: var(--border); }
+  .btn.primary { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 500; }
+  .btn.primary:hover { background: #b5d960; }
+  .btn.danger { background: var(--accent2); color: var(--bg); border-color: var(--accent2); }
+  .btn.sm { padding: 5px 10px; font-size: 11px; }
+
+  /* ── Forms ── */
+  input, select, textarea {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    padding: 8px 10px;
+    width: 100%;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .form-group { margin-bottom: 14px; }
+
+  /* ── Table ── */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th {
+    text-align: left;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    padding: 8px 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  td {
+    padding: 10px 10px;
+    border-bottom: 1px solid var(--border);
+    font-size: 12px;
+    vertical-align: middle;
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  .tx-amount { font-family: var(--font-display); font-size: 15px; font-weight: 300; white-space: nowrap; }
+  .tx-amount.debit { color: var(--accent2); }
+  .tx-amount.credit { color: var(--accent); }
+  .tx-desc { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tx-desc small { display: block; font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+  .cat-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 10px;
+    font-weight: 500;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  .cat-pill.unclassified { border-color: var(--accent2); color: var(--accent2); }
+  .cat-pill.ignored { opacity: 0.4; }
+
+  .source-tag { font-size: 10px; color: var(--muted); }
+
+  /* ── Upload zone ── */
+  .upload-zone {
+    border: 2px dashed var(--border);
+    border-radius: 8px;
+    padding: 40px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color 0.2s, background 0.2s;
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(200,240,110,0.04); }
+  .upload-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+  .upload-zone .up-icon { font-size: 32px; margin-bottom: 10px; }
+  .upload-zone p { color: var(--muted); font-size: 12px; }
+  .upload-zone strong { color: var(--text); }
+
+  /* ── Bar chart ── */
+  .bar-chart { display: flex; flex-direction: column; gap: 8px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-label { font-size: 11px; color: var(--muted); width: 120px; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .bar-track { flex: 1; height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.6s cubic-bezier(.4,0,.2,1); }
+  .bar-fill.income { background: var(--accent3); }
+  .bar-val { font-size: 11px; color: var(--text); white-space: nowrap; width: 80px; text-align: right; }
+
+  /* ── Month tabs ── */
+  .month-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 16px; }
+  .month-tab {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: none;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    transition: all 0.15s;
+  }
+  .month-tab:hover { color: var(--text); border-color: var(--text); }
+  .month-tab.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+
+  /* ── Drive setup ── */
+  .setup-box {
+    max-width: 520px;
+    margin: 40px auto;
+    text-align: center;
+  }
+  .setup-box h2 { font-family: var(--font-display); font-size: 28px; font-weight: 300; margin-bottom: 8px; }
+  .setup-box p { color: var(--muted); line-height: 1.6; margin-bottom: 20px; }
+  .setup-steps { text-align: left; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin-bottom: 20px; }
+  .setup-steps li { padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; line-height: 1.5; }
+  .setup-steps li:last-child { border-bottom: none; }
+  .setup-steps code { background: var(--border); padding: 1px 5px; border-radius: 3px; font-family: var(--font-mono); }
+
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 12px;
+    z-index: 999;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.25s;
+    max-width: 300px;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.ok { border-color: var(--accent); }
+  .toast.err { border-color: var(--accent2); }
+
+  /* ── Rules ── */
+  .rule-row { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .rule-row:last-child { border-bottom: none; }
+  .rule-keyword { flex: 1; font-size: 12px; color: var(--accent3); }
+  .rule-cat { font-size: 11px; color: var(--muted); }
+
+  /* ── Empty states ── */
+  .empty { text-align: center; padding: 48px 20px; color: var(--muted); }
+  .empty .empty-icon { font-size: 40px; margin-bottom: 12px; opacity: 0.5; }
+  .empty p { font-size: 12px; line-height: 1.6; }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Modal ── */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 200;
+    display: flex; align-items: center; justify-content: center;
+    padding: 20px;
+    opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 24px;
+    width: 100%;
+    max-width: 440px;
+    transform: translateY(12px);
+    transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal h3 { font-family: var(--font-display); font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+
+  /* ── Trend sparkline ── */
+  .sparkline { display: flex; align-items: flex-end; gap: 3px; height: 40px; }
+  .spark-bar { flex: 1; background: var(--accent); border-radius: 2px 2px 0 0; opacity: 0.7; min-height: 2px; transition: opacity 0.2s; }
+  .spark-bar:hover { opacity: 1; }
+  .spark-bar.income { background: var(--accent3); }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <header>
+    <div class="logo">budget<span>track</span></div>
+    <div class="header-right">
+      <div class="sync-status">
+        <div class="sync-dot" id="syncDot"></div>
+        <span id="syncLabel">not connected</span>
+      </div>
+      <button class="btn sm" id="driveBtn" onclick="handleDriveBtn()">Connect Drive</button>
+    </div>
+  </header>
+
+  <nav>
+    <button class="nav-btn active" onclick="showPanel('dashboard')">Dashboard</button>
+    <button class="nav-btn" onclick="showPanel('transactions')">Transactions</button>
+    <button class="nav-btn" onclick="showPanel('review')">Review <span class="badge" id="reviewBadge">0</span></button>
+    <button class="nav-btn" onclick="showPanel('import')">Import</button>
+    <button class="nav-btn" onclick="showPanel('rules')">Rules</button>
+    <button class="nav-btn" onclick="showPanel('settings')">Settings</button>
+  </nav>
+
+  <main>
+
+    <!-- DASHBOARD -->
+    <div class="panel active" id="panel-dashboard">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-family:var(--font-display);font-size:24px;font-weight:300;" id="dashMonth">—</div>
+          <div style="font-size:11px;color:var(--muted);">Monthly Summary</div>
+        </div>
+        <div class="month-tabs" id="monthTabs"></div>
+      </div>
+
+      <div class="grid-4" style="margin-bottom:16px;" id="statTiles">
+        <div class="stat"><div class="stat-label">Income</div><div class="stat-value positive" id="statIncome">$0</div></div>
+        <div class="stat"><div class="stat-label">Expenses</div><div class="stat-value negative" id="statExpenses">$0</div></div>
+        <div class="stat"><div class="stat-label">Net</div><div class="stat-value neutral" id="statNet">$0</div></div>
+        <div class="stat"><div class="stat-label">Unclassified</div><div class="stat-value" id="statUnclass">0</div><div class="stat-sub">need review</div></div>
+      </div>
+
+      <div class="grid-2" style="margin-bottom:16px;">
+        <div class="card">
+          <div class="card-title">Expenses by Category</div>
+          <div class="bar-chart" id="catChart">
+            <div class="empty"><div class="empty-icon">📊</div><p>Import some transactions to see your spending breakdown.</p></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">12-Month Trend</div>
+          <div id="trendChart">
+            <div class="empty"><div class="empty-icon">📈</div><p>Data from multiple months will appear here.</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Recent Transactions</div>
+        <div class="table-wrap" id="recentTx">
+          <div class="empty"><div class="empty-icon">💳</div><p>No transactions yet. Go to <strong>Import</strong> to load your statements.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRANSACTIONS -->
+    <div class="panel" id="panel-transactions">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
+        <div class="month-tabs" id="txMonthTabs" style="margin-bottom:0;"></div>
+        <select id="txCatFilter" style="width:150px;" onchange="renderTransactions()">
+          <option value="">All categories</option>
+        </select>
+        <select id="txSourceFilter" style="width:120px;" onchange="renderTransactions()">
+          <option value="">All sources</option>
+          <option value="commbank">CommBank</option>
+          <option value="amex">Amex</option>
+        </select>
+      </div>
+      <div class="card">
+        <div class="table-wrap" id="txTable">
+          <div class="empty"><div class="empty-icon">💳</div><p>No transactions yet.</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- REVIEW -->
+    <div class="panel" id="panel-review">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-family:var(--font-display);font-size:20px;font-weight:300;">Needs Review</div>
+          <div style="font-size:11px;color:var(--muted);" id="reviewSubtitle">Transactions that couldn't be auto-classified</div>
+        </div>
+        <button class="btn" onclick="reapplyRules()">↻ Re-apply Rules</button>
+      </div>
+
+      <!-- Full-screen card reviewer -->
+      <div id="reviewCard" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+          <div style="font-size:11px;color:var(--muted);" id="reviewProgress"></div>
+          <div style="display:flex;gap:6px;">
+            <button class="btn sm" onclick="reviewNav(-1)" id="reviewPrev">← Prev</button>
+            <button class="btn sm" onclick="reviewNav(1)" id="reviewNext">Next →</button>
+          </div>
+        </div>
+
+        <!-- Transaction card -->
+        <div class="card" style="margin-bottom:16px;text-align:center;padding:28px 20px;">
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;" id="rcDate"></div>
+          <div style="font-size:16px;font-weight:500;margin-bottom:10px;line-height:1.4;" id="rcDesc"></div>
+          <div style="font-family:var(--font-display);font-size:40px;font-weight:300;margin-bottom:6px;" id="rcAmount"></div>
+          <div style="font-size:11px;color:var(--muted);" id="rcSource"></div>
+        </div>
+
+        <!-- Category grid -->
+        <div style="margin-bottom:12px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;">Select a category</div>
+        <div id="rcCatGrid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:16px;"></div>
+
+        <!-- New category + rule -->
+        <div class="card" style="padding:14px;">
+          <div style="display:flex;gap:8px;margin-bottom:10px;">
+            <input type="text" id="rcNewCat" placeholder="Or type a new category…" style="flex:1;">
+            <button class="btn primary" onclick="applyReviewCard()">Save</button>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <input type="checkbox" id="rcMakeRule" style="width:auto;flex-shrink:0;">
+            <label style="display:inline;text-transform:none;font-size:11px;color:var(--muted);">Create a rule so future transactions like this are auto-classified</label>
+          </div>
+        </div>
+
+        <!-- Ignore -->
+        <div style="text-align:center;margin-top:14px;">
+          <button class="btn danger" onclick="ignoreReviewCard()">Ignore this transaction</button>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div id="reviewEmpty" style="display:none;">
+        <div class="card">
+          <div class="empty"><div class="empty-icon">✅</div><p>All transactions classified!</p></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- IMPORT -->
+    <div class="panel" id="panel-import">
+      <div style="margin-bottom:16px;">
+        <div style="font-family:var(--font-display);font-size:20px;font-weight:300;">Import Statements</div>
+        <div style="font-size:11px;color:var(--muted);">CommBank CSV or Amex CSV — detected automatically</div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">CommBank Statement</div>
+          <div class="upload-zone" id="cbZone">
+            <input type="file" accept=".csv" onchange="handleFile(event,'commbank')">
+            <div class="up-icon">🏦</div>
+            <p><strong>Drop CSV here</strong> or click to browse</p>
+            <p style="margin-top:4px;">Export from NetBank → Accounts → Download</p>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Amex Statement</div>
+          <div class="upload-zone" id="amexZone">
+            <input type="file" accept=".csv" onchange="handleFile(event,'amex')">
+            <div class="up-icon">💳</div>
+            <p><strong>Drop CSV here</strong> or click to browse</p>
+            <p style="margin-top:4px;">Export from Amex App → Statements → Download</p>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px;" id="importLog">
+        <div class="card-title">Import Log</div>
+        <div id="importLogBody" style="font-size:12px;color:var(--muted);">No imports yet this session.</div>
+      </div>
+    </div>
+
+    <!-- RULES -->
+    <div class="panel" id="panel-rules">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+        <div>
+          <div style="font-family:var(--font-display);font-size:20px;font-weight:300;">Auto-Classification Rules</div>
+          <div style="font-size:11px;color:var(--muted);">Keywords in the transaction description → category</div>
+        </div>
+        <button class="btn primary" onclick="openAddRule()">+ Add Rule</button>
+      </div>
+      <div class="card" id="rulesList"></div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div class="panel" id="panel-settings">
+      <div style="font-family:var(--font-display);font-size:20px;font-weight:300;margin-bottom:16px;">Settings</div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Google Drive Sync</div>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.6;">Your data is stored as JSON files in a folder called <code style="background:var(--border);padding:1px 4px;border-radius:3px;">BudgetTracker</code> in your Google Drive. Share that folder with your partner for multi-device sync.</p>
+          <div id="driveSettingsBody">
+            <button class="btn primary" onclick="handleDriveBtn()">Connect Google Drive</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Categories</div>
+          <div id="catList" style="margin-bottom:12px;"></div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="newCatInput" placeholder="New category name" style="flex:1;">
+            <button class="btn primary" onclick="addCategory()">Add</button>
+          </div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:16px;">
+        <div class="card-title">Data Management</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn" onclick="exportData()">Export All Data (JSON)</button>
+          <button class="btn" onclick="importDataFile()">Import Data Backup</button>
+          <input type="file" id="importDataInput" accept=".json" style="display:none;" onchange="loadDataBackup(event)">
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- CLASSIFY MODAL -->
+<div class="modal-overlay" id="classifyModal">
+  <div class="modal">
+    <h3>Classify Transaction</h3>
+    <div id="classifyTxInfo" style="background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:12px;margin-bottom:16px;font-size:12px;line-height:1.6;"></div>
+    <div class="form-group">
+      <label>Category</label>
+      <select id="classifyCatSelect"></select>
+    </div>
+    <div class="form-group">
+      <label>New category (or leave blank to use above)</label>
+      <input type="text" id="classifyNewCat" placeholder="e.g. Pet Expenses">
+    </div>
+    <div class="form-group" style="display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="classifyMakeRule" style="width:auto;">
+      <label style="display:inline;text-transform:none;font-size:12px;">Also create a rule for future transactions with this description</label>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('classifyModal')">Cancel</button>
+      <button class="btn danger" onclick="ignoreCurrentTx()">Ignore</button>
+      <button class="btn primary" onclick="applyClassify()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD RULE MODAL -->
+<div class="modal-overlay" id="addRuleModal">
+  <div class="modal">
+    <h3>Add Rule</h3>
+    <div class="form-group">
+      <label>Keyword (case-insensitive, matches description)</label>
+      <input type="text" id="ruleKeyword" placeholder="e.g. woolworths">
+    </div>
+    <div class="form-group">
+      <label>Category</label>
+      <select id="ruleCatSelect"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addRuleModal')">Cancel</button>
+      <button class="btn primary" onclick="saveRule()">Add Rule</button>
+    </div>
+  </div>
+</div>
+
+<!-- EDIT RULE MODAL -->
+<div class="modal-overlay" id="editRuleModal">
+  <div class="modal">
+    <h3>Edit Rule</h3>
+    <div class="form-group">
+      <label>Keyword (case-insensitive)</label>
+      <input type="text" id="editRuleKeyword" placeholder="e.g. woolworths">
+    </div>
+    <div class="form-group">
+      <label>Category</label>
+      <select id="editRuleCatSelect"></select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('editRuleModal')">Cancel</button>
+      <button class="btn primary" onclick="saveEditRule()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════════
+const DEFAULT_CATEGORIES = [
+  'Groceries','Dining & Cafes','Transport','Fuel','Utilities','Insurance',
+  'Health & Medical','Entertainment','Shopping','Travel','Education',
+  'Home & Garden','Personal Care','Subscriptions','Pets','Gifts',
+  'Income','Transfer / Internal','Other'
+];
+
+const DEFAULT_RULES = [
+  {keyword:'woolworths', category:'Groceries'},
+  {keyword:'coles', category:'Groceries'},
+  {keyword:'aldi', category:'Groceries'},
+  {keyword:'iga', category:'Groceries'},
+  {keyword:'harris farm', category:'Groceries'},
+  {keyword:'uber eats', category:'Dining & Cafes'},
+  {keyword:'doordash', category:'Dining & Cafes'},
+  {keyword:'menulog', category:'Dining & Cafes'},
+  {keyword:'mcdonalds', category:'Dining & Cafes'},
+  {keyword:'kfc ', category:'Dining & Cafes'},
+  {keyword:'subway', category:'Dining & Cafes'},
+  {keyword:'netflix', category:'Subscriptions'},
+  {keyword:'spotify', category:'Subscriptions'},
+  {keyword:'apple.com/bill', category:'Subscriptions'},
+  {keyword:'amazon prime', category:'Subscriptions'},
+  {keyword:'disney+', category:'Subscriptions'},
+  {keyword:'binge', category:'Subscriptions'},
+  {keyword:'stan ', category:'Subscriptions'},
+  {keyword:'amazon web', category:'Subscriptions'},
+  {keyword:'7-eleven', category:'Fuel'},
+  {keyword:'bp ', category:'Fuel'},
+  {keyword:'caltex', category:'Fuel'},
+  {keyword:'ampol', category:'Fuel'},
+  {keyword:'shell ', category:'Fuel'},
+  {keyword:'opal', category:'Transport'},
+  {keyword:'myki', category:'Transport'},
+  {keyword:'uber*trip', category:'Transport'},
+  {keyword:'parking', category:'Transport'},
+  {keyword:'sydney trains', category:'Transport'},
+  {keyword:'airbnb', category:'Travel'},
+  {keyword:'booking.com', category:'Travel'},
+  {keyword:'jetstar', category:'Travel'},
+  {keyword:'qantas', category:'Travel'},
+  {keyword:'virgin australia', category:'Travel'},
+  {keyword:'bunnings', category:'Home & Garden'},
+  {keyword:'ikea', category:'Home & Garden'},
+  {keyword:'harvey norman', category:'Shopping'},
+  {keyword:'jb hi-fi', category:'Shopping'},
+  {keyword:'kmart', category:'Shopping'},
+  {keyword:'target', category:'Shopping'},
+  {keyword:'big w', category:'Shopping'},
+  {keyword:'chemist warehouse', category:'Health & Medical'},
+  {keyword:'priceline', category:'Health & Medical'},
+  {keyword:'medibank', category:'Insurance'},
+  {keyword:'nib ', category:'Insurance'},
+  {keyword:'bupa', category:'Insurance'},
+  {keyword:'payroll', category:'Income'},
+  {keyword:'salary', category:'Income'},
+  {keyword:'pay credit', category:'Income'},
+];
+
+let state = {
+  categories: [...DEFAULT_CATEGORIES],
+  rules: [...DEFAULT_RULES],
+  transactions: {}, // keyed by monthKey (YYYY-MM) → array of tx
+  currentMonth: null,
+  currentTxMonth: null,
+};
+
+let currentClassifyTxId = null;
+let driveConnected = false;
+let driveAccessToken = null;
+let driveFolderId = null;
+const CLIENT_ID_KEY = 'bt_gclient_id';
+const FOLDER_NAME = 'BudgetTracker';
+
+// ═══════════════════════════════════════════════════════════════
+// ROUTING
+// ═══════════════════════════════════════════════════════════════
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    if (b.textContent.toLowerCase().includes(name)) b.classList.add('active');
+  });
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'transactions') renderTransactions();
+  if (name === 'review') renderReview();
+  if (name === 'rules') renderRules();
+  if (name === 'settings') renderSettings();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TRANSACTION ID
+// ═══════════════════════════════════════════════════════════════
+function makeTxId(date, amount, description) {
+  const str = `${date}|${amount}|${description}`.toLowerCase();
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = ((hash << 5) - hash) + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return 'tx_' + Math.abs(hash).toString(36);
+}
+
+function monthKey(dateStr) {
+  // dateStr: YYYY-MM-DD or DD/MM/YYYY
+  let d;
+  if (dateStr.includes('/')) {
+    const [dd, mm, yyyy] = dateStr.split('/');
+    d = `${yyyy}-${mm.padStart(2,'0')}`;
+  } else {
+    d = dateStr.substring(0, 7);
+  }
+  return d;
+}
+
+function formatDate(dateStr) {
+  if (dateStr.includes('/')) {
+    const [dd, mm, yyyy] = dateStr.split('/');
+    return `${dd}/${mm}/${yyyy}`;
+  }
+  const [y, m, da] = dateStr.split('-');
+  return `${da}/${m}/${y}`;
+}
+
+function isoDate(dateStr) {
+  if (dateStr.includes('/')) {
+    const [dd, mm, yyyy] = dateStr.split('/');
+    return `${yyyy}-${mm.padStart(2,'0')}-${dd.padStart(2,'0')}`;
+  }
+  return dateStr;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PARSING
+// ═══════════════════════════════════════════════════════════════
+function parseCSV(text) {
+  const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean);
+  if (!lines.length) return [];
+  const rows = lines.map(l => {
+    const cells = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < l.length; i++) {
+      const c = l[i];
+      if (c === '"') { inQ = !inQ; }
+      else if (c === ',' && !inQ) { cells.push(cur.trim()); cur = ''; }
+      else { cur += c; }
+    }
+    cells.push(cur.trim());
+    return cells;
+  });
+  return rows;
+}
+
+function detectFormat(rows) {
+  // CommBank: Date, Amount, Description, Balance  (no header, DD/MM/YYYY dates)
+  // Amex: Date, Description, Amount  (has header row with "Date")
+  if (!rows.length) return null;
+  const firstRow = rows[0].join(',').toLowerCase();
+  if (firstRow.includes('date') && firstRow.includes('amount')) return 'amex';
+  // CommBank rows start with DD/MM/YYYY
+  if (/^\d{2}\/\d{2}\/\d{4}/.test(rows[0][0])) return 'commbank';
+  return null;
+}
+
+function parseCommBank(rows) {
+  const txs = [];
+  for (const row of rows) {
+    if (row.length < 3) continue;
+    const [date, amount, description] = row;
+    if (!/^\d{2}\/\d{2}\/\d{4}/.test(date)) continue;
+    const amt = parseFloat(amount.replace(/[^\d.\-]/g, ''));
+    if (isNaN(amt)) continue;
+    const iso = isoDate(date);
+    txs.push({
+      id: makeTxId(iso, amt, description),
+      date: iso,
+      amount: amt,
+      description: description.trim(),
+      source: 'commbank',
+      category: null,
+      ignored: false,
+    });
+  }
+  return txs;
+}
+
+function parseAmex(rows) {
+  // Find header row
+  let headerIdx = rows.findIndex(r => r[0].toLowerCase() === 'date');
+  if (headerIdx === -1) headerIdx = 0;
+  const headers = rows[headerIdx].map(h => h.toLowerCase().trim());
+  const dateCol = headers.findIndex(h => h === 'date');
+  const descCol = headers.findIndex(h => h.includes('desc') || h.includes('merchant'));
+  const amtCol = headers.findIndex(h => h === 'amount');
+
+  const txs = [];
+  for (let i = headerIdx + 1; i < rows.length; i++) {
+    const row = rows[i];
+    if (row.length < 3) continue;
+    const dateRaw = row[dateCol] || row[0];
+    const description = row[descCol] || row[1];
+    const amtRaw = row[amtCol] || row[2];
+    const iso = isoDate(dateRaw.trim());
+    // Amex: positive = charge, negative = credit/refund
+    const amt = parseFloat(amtRaw.replace(/[^\d.\-]/g, ''));
+    if (isNaN(amt) || !iso.match(/\d{4}-\d{2}-\d{2}/)) continue;
+    // Normalise: make debits negative
+    txs.push({
+      id: makeTxId(iso, amt, description),
+      date: iso,
+      amount: -amt, // Amex sign: positive = you owe = debit for us
+      description: description.trim(),
+      source: 'amex',
+      category: null,
+      ignored: false,
+    });
+  }
+  return txs;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// AUTO-CLASSIFY
+// ═══════════════════════════════════════════════════════════════
+function classifyTx(tx) {
+  if (tx.category) return tx.category;
+  const desc = tx.description.toLowerCase();
+  for (const rule of state.rules) {
+    if (desc.includes(rule.keyword.toLowerCase())) return rule.category;
+  }
+  return null;
+}
+
+function classifyAll() {
+  for (const month of Object.keys(state.transactions)) {
+    state.transactions[month] = state.transactions[month].map(tx => ({
+      ...tx,
+      category: tx.ignored ? tx.category : (classifyTx(tx) || tx.category),
+    }));
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// FILE IMPORT
+// ═══════════════════════════════════════════════════════════════
+function handleFile(event, hint) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const text = e.target.result;
+    const rows = parseCSV(text);
+    const fmt = detectFormat(rows) || hint;
+    let txs = [];
+    if (fmt === 'commbank') txs = parseCommBank(rows);
+    else if (fmt === 'amex') txs = parseAmex(rows);
+    else { toast('Could not detect file format.', 'err'); return; }
+
+    let added = 0, skipped = 0;
+    for (const tx of txs) {
+      const mk = monthKey(tx.date);
+      if (!state.transactions[mk]) state.transactions[mk] = [];
+      const exists = state.transactions[mk].some(t => t.id === tx.id);
+      if (!exists) { state.transactions[mk].push(tx); added++; }
+      else skipped++;
+    }
+    // Auto-classify new txs
+    classifyAll();
+    // Reset current month to most recent so new data is visible
+    const months = allMonths();
+    if (months.length) { state.currentMonth = months[0]; state.currentTxMonth = months[0]; }
+    updateReviewBadge();
+    saveLocal();
+    syncToDrive();
+    const logEl = document.getElementById('importLogBody');
+    const line = document.createElement('div');
+    line.style.cssText = 'padding:4px 0;border-bottom:1px solid var(--border);';
+    line.innerHTML = `<span style="color:var(--accent)">✓</span> <strong>${file.name}</strong> (${fmt}) — ${added} new, ${skipped} duplicate`;
+    logEl.innerHTML = '';
+    logEl.appendChild(line);
+    toast(`Imported ${added} transactions from ${file.name}`, 'ok');
+    if (added > 0) showPanel('review');
+    else showPanel('import');
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// ALL MONTHS SORTED
+// ═══════════════════════════════════════════════════════════════
+function allMonths() {
+  return Object.keys(state.transactions).sort().reverse();
+}
+
+function monthLabel(mk) {
+  const [y, m] = mk.split('-');
+  const names = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  return `${names[parseInt(m)-1]} ${y}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════════
+function renderDashboard() {
+  const months = allMonths();
+  // Always default to most recent month; also reset if stored month no longer exists
+  if (!state.currentMonth || !months.includes(state.currentMonth)) {
+    state.currentMonth = months[0] || null;
+  }
+
+  // Month tabs (last 12)
+  const tabsEl = document.getElementById('monthTabs');
+  tabsEl.innerHTML = '';
+  months.slice(0, 12).forEach(mk => {
+    const b = document.createElement('button');
+    b.className = 'month-tab' + (mk === state.currentMonth ? ' active' : '');
+    b.textContent = monthLabel(mk);
+    b.onclick = () => { state.currentMonth = mk; renderDashboard(); };
+    tabsEl.appendChild(b);
+  });
+
+  const mk = state.currentMonth;
+  document.getElementById('dashMonth').textContent = mk ? monthLabel(mk) : '—';
+
+  const txs = mk && state.transactions[mk] ? state.transactions[mk].filter(t => !t.ignored) : [];
+  const income = txs.filter(t => t.amount > 0).reduce((s, t) => s + t.amount, 0);
+  const expenses = txs.filter(t => t.amount < 0).reduce((s, t) => s + Math.abs(t.amount), 0);
+  const net = income - expenses;
+  const unclass = txs.filter(t => !t.category).length;
+
+  document.getElementById('statIncome').textContent = fmt$(income);
+  document.getElementById('statExpenses').textContent = fmt$(expenses);
+  document.getElementById('statNet').textContent = fmt$(net);
+  document.getElementById('statNet').className = 'stat-value ' + (net >= 0 ? 'positive' : 'negative');
+  document.getElementById('statUnclass').textContent = unclass;
+
+  // Category breakdown
+  const catChart = document.getElementById('catChart');
+  const expByCat = {};
+  txs.filter(t => t.amount < 0 && t.category).forEach(t => {
+    expByCat[t.category] = (expByCat[t.category] || 0) + Math.abs(t.amount);
+  });
+  const sorted = Object.entries(expByCat).sort((a,b) => b[1]-a[1]);
+  if (sorted.length) {
+    const max = sorted[0][1];
+    catChart.innerHTML = sorted.map(([cat, amt]) => `
+      <div class="bar-row">
+        <div class="bar-label" title="${cat}">${cat}</div>
+        <div class="bar-track"><div class="bar-fill" style="width:${(amt/max*100).toFixed(1)}%"></div></div>
+        <div class="bar-val">${fmt$(amt)}</div>
+      </div>`).join('');
+  } else {
+    catChart.innerHTML = '<div class="empty"><div class="empty-icon">📊</div><p>No classified expenses this month.</p></div>';
+  }
+
+  // 12-month trend
+  const trendEl = document.getElementById('trendChart');
+  const last12 = allMonths().slice(0, 12).reverse();
+  if (last12.length > 1) {
+    const maxExp = Math.max(...last12.map(m => {
+      const t = state.transactions[m] || [];
+      return t.filter(x => !x.ignored && x.amount < 0).reduce((s,x) => s + Math.abs(x.amount), 0);
+    }));
+    trendEl.innerHTML = `
+      <div style="display:flex;gap:4px;align-items:flex-end;height:60px;margin-bottom:4px;">
+        ${last12.map(m => {
+          const t = state.transactions[m] || [];
+          const exp = t.filter(x => !x.ignored && x.amount < 0).reduce((s,x) => s + Math.abs(x.amount), 0);
+          const pct = maxExp ? (exp/maxExp*100) : 0;
+          return `<div style="flex:1;background:var(--accent2);border-radius:2px 2px 0 0;height:${pct}%;min-height:2px;opacity:${m===mk?'1':'0.5'};transition:opacity 0.2s;" title="${monthLabel(m)}: ${fmt$(exp)}"></div>`;
+        }).join('')}
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--muted);">
+        <span>${monthLabel(last12[0])}</span>
+        <span>${monthLabel(last12[last12.length-1])}</span>
+      </div>`;
+  } else {
+    trendEl.innerHTML = '<div class="empty"><div class="empty-icon">📈</div><p>Data from multiple months will appear here.</p></div>';
+  }
+
+  // Recent transactions
+  const recentEl = document.getElementById('recentTx');
+  const recent = txs.slice().sort((a,b) => b.date.localeCompare(a.date)).slice(0, 8);
+  if (recent.length) {
+    recentEl.innerHTML = txTable(recent, false);
+  } else {
+    recentEl.innerHTML = '<div class="empty"><div class="empty-icon">💳</div><p>No transactions this month.</p></div>';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TRANSACTIONS PANEL
+// ═══════════════════════════════════════════════════════════════
+function renderTransactions() {
+  const months = allMonths();
+  if (!state.currentTxMonth || !months.includes(state.currentTxMonth)) {
+    state.currentTxMonth = months[0] || null;
+  }
+
+  const tabsEl = document.getElementById('txMonthTabs');
+  tabsEl.innerHTML = '';
+  months.slice(0, 12).forEach(mk => {
+    const b = document.createElement('button');
+    b.className = 'month-tab' + (mk === state.currentTxMonth ? ' active' : '');
+    b.textContent = monthLabel(mk);
+    b.onclick = () => { state.currentTxMonth = mk; renderTransactions(); };
+    tabsEl.appendChild(b);
+  });
+
+  // Populate category filter
+  const catSel = document.getElementById('txCatFilter');
+  const curCat = catSel.value;
+  catSel.innerHTML = '<option value="">All categories</option>' +
+    state.categories.map(c => `<option value="${c}" ${c===curCat?'selected':''}>${c}</option>`).join('') +
+    '<option value="__unclassified__">Unclassified</option><option value="__ignored__">Ignored</option>';
+
+  const mk = state.currentTxMonth;
+  let txs = mk && state.transactions[mk] ? [...state.transactions[mk]] : [];
+  const catF = document.getElementById('txCatFilter').value;
+  const srcF = document.getElementById('txSourceFilter').value;
+  if (catF === '__unclassified__') txs = txs.filter(t => !t.category && !t.ignored);
+  else if (catF === '__ignored__') txs = txs.filter(t => t.ignored);
+  else if (catF) txs = txs.filter(t => t.category === catF);
+  if (srcF) txs = txs.filter(t => t.source === srcF);
+  txs.sort((a,b) => b.date.localeCompare(a.date));
+
+  const el = document.getElementById('txTable');
+  el.innerHTML = txs.length ? txTable(txs, true) : '<div class="empty"><div class="empty-icon">💳</div><p>No transactions match this filter.</p></div>';
+}
+
+function txTable(txs, showActions) {
+  return `<table>
+    <thead><tr>
+      <th>Date</th><th>Description</th><th>Category</th><th>Amount</th><th>Source</th>
+      ${showActions ? '<th></th>' : ''}
+    </tr></thead>
+    <tbody>
+    ${txs.map(tx => `
+      <tr style="${tx.ignored ? 'opacity:0.4;' : ''}">
+        <td style="white-space:nowrap;color:var(--muted);">${formatDate(tx.date)}</td>
+        <td><div class="tx-desc">${tx.description}</div></td>
+        <td>${tx.ignored
+          ? '<span class="cat-pill ignored">ignored</span>'
+          : tx.category
+            ? `<span class="cat-pill">${tx.category}</span>`
+            : '<span class="cat-pill unclassified">unclassified</span>'
+        }</td>
+        <td><span class="tx-amount ${tx.amount < 0 ? 'debit' : 'credit'}">${fmt$(Math.abs(tx.amount))}</span></td>
+        <td><span class="source-tag">${tx.source}</span></td>
+        ${showActions ? `<td><button class="btn sm" onclick="openClassify('${tx.id}','${monthKey(tx.date)}')">Edit</button></td>` : ''}
+      </tr>`).join('')}
+    </tbody></table>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// REVIEW PANEL — full-screen card UI
+// ═══════════════════════════════════════════════════════════════
+let reviewQueue = [];   // flat list of {tx, mk} pending review
+let reviewIdx = 0;      // which card we're on
+let reviewSelectedCat = null;
+
+function getUnclassified() {
+  const list = [];
+  for (const [mk, txs] of Object.entries(state.transactions)) {
+    txs.filter(t => !t.category && !t.ignored).forEach(t => list.push({tx: {...t}, mk}));
+  }
+  list.sort((a, b) => b.tx.date.localeCompare(a.tx.date));
+  return list;
+}
+
+function renderReview() {
+  reviewQueue = getUnclassified();
+  reviewIdx = Math.min(reviewIdx, Math.max(reviewQueue.length - 1, 0));
+
+  const cardEl  = document.getElementById('reviewCard');
+  const emptyEl = document.getElementById('reviewEmpty');
+
+  if (!reviewQueue.length) {
+    cardEl.style.display  = 'none';
+    emptyEl.style.display = 'block';
+    document.getElementById('reviewSubtitle').textContent = 'All done!';
+    return;
+  }
+
+  cardEl.style.display  = 'block';
+  emptyEl.style.display = 'none';
+  document.getElementById('reviewSubtitle').textContent =
+    reviewQueue.length + ' transaction' + (reviewQueue.length === 1 ? '' : 's') + ' need review';
+
+  renderReviewCard();
+}
+
+function renderReviewCard() {
+  if (!reviewQueue.length) { renderReview(); return; }
+  const {tx} = reviewQueue[reviewIdx];
+  reviewSelectedCat = null;
+
+  // Progress
+  document.getElementById('reviewProgress').textContent =
+    `${reviewIdx + 1} of ${reviewQueue.length}`;
+  document.getElementById('reviewPrev').disabled = reviewIdx === 0;
+  document.getElementById('reviewNext').disabled = reviewIdx === reviewQueue.length - 1;
+
+  // Transaction info
+  document.getElementById('rcDate').textContent = formatDate(tx.date);
+  document.getElementById('rcDesc').textContent = tx.description;
+  const amtEl = document.getElementById('rcAmount');
+  amtEl.textContent = (tx.amount < 0 ? '-' : '+') + fmt$(Math.abs(tx.amount));
+  amtEl.style.color = tx.amount < 0 ? 'var(--accent2)' : 'var(--accent)';
+  document.getElementById('rcSource').textContent = tx.source.toUpperCase();
+
+  // Category buttons
+  const grid = document.getElementById('rcCatGrid');
+  grid.innerHTML = state.categories.map(c => `
+    <button class="cat-btn" id="catbtn-${CSS.escape(c)}"
+      onclick="selectReviewCat(this, '${c.replace(/'/g, "\'")}')"
+      style="padding:12px 8px;border-radius:8px;border:1px solid var(--border);
+             background:var(--surface2);color:var(--text);font-family:var(--font-mono);
+             font-size:12px;cursor:pointer;transition:all 0.15s;text-align:left;">
+      ${c}
+    </button>`).join('');
+
+  // Reset new cat input and rule checkbox
+  document.getElementById('rcNewCat').value = '';
+  document.getElementById('rcMakeRule').checked = false;
+}
+
+function selectReviewCat(btn, cat) {
+  // Deselect all
+  document.querySelectorAll('.cat-btn').forEach(b => {
+    b.style.background = 'var(--surface2)';
+    b.style.borderColor = 'var(--border)';
+    b.style.color = 'var(--text)';
+  });
+  // Select this one
+  btn.style.background = 'var(--accent)';
+  btn.style.borderColor = 'var(--accent)';
+  btn.style.color = 'var(--bg)';
+  reviewSelectedCat = cat;
+  // Clear new cat field when a button is selected
+  document.getElementById('rcNewCat').value = '';
+}
+
+function applyReviewCard() {
+  if (!reviewQueue.length) return;
+  const {tx, mk} = reviewQueue[reviewIdx];
+
+  let cat = document.getElementById('rcNewCat').value.trim() || reviewSelectedCat;
+  if (!cat) { toast('Please select or type a category', 'err'); return; }
+
+  if (!state.categories.includes(cat)) state.categories.push(cat);
+
+  const real = state.transactions[mk]?.find(t => t.id === tx.id);
+  if (real) { real.category = cat; real.ignored = false; }
+
+  if (document.getElementById('rcMakeRule').checked) {
+    const keyword = tx.description.toLowerCase().slice(0, 30).trim();
+    if (!state.rules.some(r => r.keyword === keyword)) {
+      state.rules.push({keyword, category: cat});
+    }
+  }
+
+  saveLocal();
+  syncToDrive();
+  updateReviewBadge();
+
+  // Advance to next or re-render
+  reviewQueue = getUnclassified();
+  if (reviewIdx >= reviewQueue.length) reviewIdx = Math.max(reviewQueue.length - 1, 0);
+  if (reviewQueue.length) renderReviewCard();
+  else renderReview();
+
+  toast('Classified as ' + cat, 'ok');
+}
+
+function ignoreReviewCard() {
+  if (!reviewQueue.length) return;
+  const {tx, mk} = reviewQueue[reviewIdx];
+  const real = state.transactions[mk]?.find(t => t.id === tx.id);
+  if (real) { real.ignored = true; real.category = null; }
+
+  saveLocal();
+  syncToDrive();
+  updateReviewBadge();
+
+  reviewQueue = getUnclassified();
+  if (reviewIdx >= reviewQueue.length) reviewIdx = Math.max(reviewQueue.length - 1, 0);
+  if (reviewQueue.length) renderReviewCard();
+  else renderReview();
+}
+
+function reviewNav(dir) {
+  reviewIdx = Math.max(0, Math.min(reviewQueue.length - 1, reviewIdx + dir));
+  renderReviewCard();
+}
+
+function updateReviewBadge() {
+  let count = 0;
+  for (const txs of Object.values(state.transactions)) {
+    count += txs.filter(t => !t.category && !t.ignored).length;
+  }
+  document.getElementById('reviewBadge').textContent = count;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RE-APPLY RULES
+// ═══════════════════════════════════════════════════════════════
+function reapplyRules() {
+  let matched = 0;
+  for (const txs of Object.values(state.transactions)) {
+    for (const tx of txs) {
+      if (tx.ignored) continue;
+      if (!tx.category) {
+        const cat = classifyTx(tx);
+        if (cat) { tx.category = cat; matched++; }
+      }
+    }
+  }
+  saveLocal();
+  syncToDrive();
+  updateReviewBadge();
+  renderReview();
+  toast(matched > 0
+    ? `✓ ${matched} transaction${matched === 1 ? '' : 's'} classified by rules`
+    : 'No new matches found', matched > 0 ? 'ok' : 'err');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CLASSIFY MODAL
+// ═══════════════════════════════════════════════════════════════
+function openClassify(txId, mk) {
+  const tx = state.transactions[mk]?.find(t => t.id === txId);
+  if (!tx) return;
+  currentClassifyTxId = {txId, mk};
+
+  document.getElementById('classifyTxInfo').innerHTML = `
+    <strong>${tx.description}</strong><br>
+    <span style="color:var(--muted);">${formatDate(tx.date)} · ${tx.source}</span><br>
+    <span class="${tx.amount < 0 ? 'tx-amount debit' : 'tx-amount credit'}" style="font-size:16px;">${fmt$(Math.abs(tx.amount))}</span>`;
+
+  const sel = document.getElementById('classifyCatSelect');
+  sel.innerHTML = state.categories.map(c =>
+    `<option value="${c}" ${c === tx.category ? 'selected' : ''}>${c}</option>`).join('');
+
+  document.getElementById('classifyNewCat').value = '';
+  document.getElementById('classifyMakeRule').checked = false;
+  document.getElementById('classifyModal').classList.add('open');
+}
+
+function applyClassify() {
+  if (!currentClassifyTxId) return;
+  const {txId, mk} = currentClassifyTxId;
+  const tx = state.transactions[mk]?.find(t => t.id === txId);
+  if (!tx) return;
+
+  let cat = document.getElementById('classifyNewCat').value.trim();
+  if (!cat) cat = document.getElementById('classifyCatSelect').value;
+  if (!cat) return;
+
+  if (!state.categories.includes(cat)) state.categories.push(cat);
+  tx.category = cat;
+  tx.ignored = false;
+
+  if (document.getElementById('classifyMakeRule').checked) {
+    const keyword = tx.description.toLowerCase().slice(0, 20).trim();
+    if (!state.rules.some(r => r.keyword === keyword)) {
+      state.rules.push({keyword, category: cat});
+    }
+  }
+
+  closeModal('classifyModal');
+  saveLocal();
+  syncToDrive();
+  updateReviewBadge();
+  renderReview();
+  renderSettings();
+  toast(`Classified as ${cat}`, 'ok');
+}
+
+function ignoreCurrentTx() {
+  if (!currentClassifyTxId) return;
+  const {txId, mk} = currentClassifyTxId;
+  const tx = state.transactions[mk]?.find(t => t.id === txId);
+  if (tx) { tx.ignored = true; tx.category = null; }
+  closeModal('classifyModal');
+  saveLocal();
+  syncToDrive();
+  updateReviewBadge();
+  renderReview();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RULES
+// ═══════════════════════════════════════════════════════════════
+function renderRules() {
+  const el = document.getElementById('rulesList');
+  if (!state.rules.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><p>No rules yet.</p></div>';
+    return;
+  }
+  el.innerHTML = state.rules.map((r, i) => `
+    <div class="rule-row">
+      <div class="rule-keyword">${r.keyword}</div>
+      <div class="rule-cat">→ ${r.category}</div>
+      <div style="display:flex;gap:6px;flex-shrink:0;">
+        <button class="btn sm" onclick="openEditRule(${i})" title="Edit rule">✏️</button>
+        <button class="btn sm" onclick="deleteRule(${i})" title="Delete rule">✕</button>
+      </div>
+    </div>`).join('');
+}
+
+function openAddRule() {
+  const sel = document.getElementById('ruleCatSelect');
+  sel.innerHTML = state.categories.map(c => `<option value="${c}">${c}</option>`).join('');
+  document.getElementById('ruleKeyword').value = '';
+  document.getElementById('addRuleModal').classList.add('open');
+}
+
+function saveRule() {
+  const kw = document.getElementById('ruleKeyword').value.trim().toLowerCase();
+  const cat = document.getElementById('ruleCatSelect').value;
+  if (!kw) return;
+  state.rules.push({keyword: kw, category: cat});
+  classifyAll();
+  updateReviewBadge();
+  closeModal('addRuleModal');
+  saveLocal();
+  syncToDrive();
+  renderRules();
+  toast('Rule added', 'ok');
+}
+
+function deleteRule(i) {
+  state.rules.splice(i, 1);
+  saveLocal();
+  syncToDrive();
+  renderRules();
+}
+
+let editRuleIdx = null;
+
+function openEditRule(i) {
+  editRuleIdx = i;
+  const rule = state.rules[i];
+  document.getElementById('editRuleKeyword').value = rule.keyword;
+  const sel = document.getElementById('editRuleCatSelect');
+  sel.innerHTML = state.categories.map(c =>
+    `<option value="${c}" ${c === rule.category ? 'selected' : ''}>${c}</option>`).join('');
+  document.getElementById('editRuleModal').classList.add('open');
+}
+
+function saveEditRule() {
+  if (editRuleIdx === null) return;
+  const kw = document.getElementById('editRuleKeyword').value.trim().toLowerCase();
+  const cat = document.getElementById('editRuleCatSelect').value;
+  if (!kw) { toast('Keyword cannot be empty', 'err'); return; }
+  state.rules[editRuleIdx] = {keyword: kw, category: cat};
+  closeModal('editRuleModal');
+  classifyAll();
+  updateReviewBadge();
+  saveLocal();
+  syncToDrive();
+  renderRules();
+  toast('Rule updated', 'ok');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SETTINGS
+// ═══════════════════════════════════════════════════════════════
+function renderSettings() {
+  const el = document.getElementById('catList');
+  el.innerHTML = state.categories.map((c, i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);">
+      <span style="font-size:12px;">${c}</span>
+      <button class="btn sm" onclick="deleteCategory(${i})">✕</button>
+    </div>`).join('');
+
+  if (driveConnected) {
+    document.getElementById('driveSettingsBody').innerHTML = `
+      <div style="color:var(--accent);font-size:12px;margin-bottom:8px;">✓ Connected to Google Drive</div>
+      <p style="font-size:11px;color:var(--muted);margin-bottom:12px;">Share the <code style="background:var(--border);padding:1px 4px;border-radius:3px;">BudgetTracker</code> folder in Google Drive with your partner's Google account for multi-device access.</p>
+      <button class="btn" onclick="disconnectDrive()">Disconnect</button>`;
+  }
+}
+
+function addCategory() {
+  const val = document.getElementById('newCatInput').value.trim();
+  if (!val || state.categories.includes(val)) return;
+  state.categories.push(val);
+  document.getElementById('newCatInput').value = '';
+  saveLocal();
+  renderSettings();
+}
+
+function deleteCategory(i) {
+  state.categories.splice(i, 1);
+  saveLocal();
+  renderSettings();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// MODAL HELPERS
+// ═══════════════════════════════════════════════════════════════
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+document.querySelectorAll('.modal-overlay').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('open'); });
+});
+
+// ═══════════════════════════════════════════════════════════════
+// FORMAT
+// ═══════════════════════════════════════════════════════════════
+function fmt$(n) {
+  return '$' + Math.abs(n).toLocaleString('en-AU', {minimumFractionDigits:2, maximumFractionDigits:2});
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════════
+let toastTimer;
+function toast(msg, type='ok') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = `toast show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOCAL STORAGE
+// ═══════════════════════════════════════════════════════════════
+function saveLocal() {
+  localStorage.setItem('bt_state', JSON.stringify(state));
+}
+
+function loadLocal() {
+  try {
+    const raw = localStorage.getItem('bt_state');
+    if (raw) {
+      const saved = JSON.parse(raw);
+      state = {...state, ...saved};
+    }
+  } catch(e) {}
+}
+
+function exportData() {
+  const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'budget-tracker-backup.json';
+  a.click();
+}
+
+function importDataFile() {
+  document.getElementById('importDataInput').click();
+}
+
+function loadDataBackup(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const data = JSON.parse(e.target.result);
+      state = {...state, ...data};
+      saveLocal();
+      updateReviewBadge();
+      renderDashboard();
+      renderSettings();
+      toast('Data restored from backup', 'ok');
+    } catch(e) {
+      toast('Invalid backup file', 'err');
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// GOOGLE DRIVE SYNC
+// ═══════════════════════════════════════════════════════════════
+function setSyncStatus(status, label) {
+  const dot = document.getElementById('syncDot');
+  dot.className = 'sync-dot ' + status;
+  document.getElementById('syncLabel').textContent = label;
+}
+
+function handleDriveBtn() {
+  if (driveConnected) return;
+  const stored = localStorage.getItem(CLIENT_ID_KEY);
+  const clientId = prompt('Enter your Google OAuth Client ID.\n\nThis is stored in your browser and won\'t be asked again.', stored || '');
+  if (!clientId) return;
+  localStorage.setItem(CLIENT_ID_KEY, clientId);
+  startDriveAuth(clientId, false);
+}
+
+function startDriveAuth(clientId, silent) {
+  const redirectUri = window.location.href.split('?')[0].split('#')[0];
+  const scope = 'https://www.googleapis.com/auth/drive.file';
+  if (silent) {
+    // Use a hidden iframe for silent token refresh — no redirect, no prompt
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent(scope)}&prompt=none`;
+    const iframe = document.createElement('iframe');
+    iframe.style.display = 'none';
+    iframe.src = url;
+    iframe.onload = () => {
+      try {
+        const hash = iframe.contentWindow.location.hash;
+        if (hash.includes('access_token')) {
+          const params = new URLSearchParams(hash.slice(1));
+          driveAccessToken = params.get('access_token');
+          driveConnected = true;
+          document.getElementById('driveBtn').textContent = 'Drive ✓';
+          setSyncStatus('ok', 'connected');
+          ensureDriveFolder().then(() => loadFromDrive());
+        }
+      } catch(e) {
+        // Cross-origin block means token not granted silently — user must click Connect
+        setSyncStatus('', 'tap Connect Drive');
+      }
+      document.body.removeChild(iframe);
+    };
+    document.body.appendChild(iframe);
+  } else {
+    const url = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${encodeURIComponent(clientId)}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=token&scope=${encodeURIComponent(scope)}`;
+    window.location.href = url;
+  }
+}
+
+function checkDriveCallback() {
+  const hash = window.location.hash;
+  if (hash.includes('access_token')) {
+    const params = new URLSearchParams(hash.slice(1));
+    driveAccessToken = params.get('access_token');
+    window.history.replaceState(null, '', window.location.pathname);
+    driveConnected = true;
+    document.getElementById('driveBtn').textContent = 'Drive ✓';
+    setSyncStatus('ok', 'connected');
+    ensureDriveFolder().then(() => {
+      loadFromDrive();
+    });
+  }
+}
+
+async function ensureDriveFolder() {
+  // Check if folder exists
+  const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=name%3D'${FOLDER_NAME}'+and+mimeType%3D'application%2Fvnd.google-apps.folder'+and+trashed%3Dfalse&fields=files(id,name)`, {
+    headers: {Authorization: `Bearer ${driveAccessToken}`}
+  });
+  const data = await res.json();
+  if (data.files && data.files.length > 0) {
+    driveFolderId = data.files[0].id;
+  } else {
+    // Create folder
+    const cr = await fetch('https://www.googleapis.com/drive/v3/files', {
+      method: 'POST',
+      headers: {Authorization: `Bearer ${driveAccessToken}`, 'Content-Type': 'application/json'},
+      body: JSON.stringify({name: FOLDER_NAME, mimeType: 'application/vnd.google-apps.folder'})
+    });
+    const d = await cr.json();
+    driveFolderId = d.id;
+  }
+}
+
+async function loadFromDrive() {
+  if (!driveConnected || !driveFolderId) return;
+  setSyncStatus('syncing', 'syncing…');
+  try {
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q='${driveFolderId}'+in+parents+and+trashed%3Dfalse&fields=files(id,name)`, {
+      headers: {Authorization: `Bearer ${driveAccessToken}`}
+    });
+    const data = await res.json();
+    for (const file of (data.files || [])) {
+      const content = await (await fetch(`https://www.googleapis.com/drive/v3/files/${file.id}?alt=media`, {
+        headers: {Authorization: `Bearer ${driveAccessToken}`}
+      })).json();
+      if (file.name === 'state.json') {
+        // Merge carefully
+        if (content.categories) state.categories = content.categories;
+        if (content.rules) state.rules = content.rules;
+        if (content.transactions) {
+          for (const [mk, txs] of Object.entries(content.transactions)) {
+            if (!state.transactions[mk]) state.transactions[mk] = [];
+            for (const tx of txs) {
+              if (!state.transactions[mk].some(t => t.id === tx.id)) {
+                state.transactions[mk].push(tx);
+              }
+            }
+          }
+        }
+      }
+    }
+    saveLocal();
+    updateReviewBadge();
+    renderDashboard();
+    setSyncStatus('ok', 'synced');
+  } catch(e) {
+    setSyncStatus('err', 'sync error');
+  }
+}
+
+async function syncToDrive() {
+  if (!driveConnected || !driveFolderId) return;
+  setSyncStatus('syncing', 'saving…');
+  try {
+    // Check if state.json exists
+    const res = await fetch(`https://www.googleapis.com/drive/v3/files?q='${driveFolderId}'+in+parents+and+name%3D'state.json'+and+trashed%3Dfalse&fields=files(id)`, {
+      headers: {Authorization: `Bearer ${driveAccessToken}`}
+    });
+    const data = await res.json();
+    const body = JSON.stringify(state);
+    const blob = new Blob([body], {type:'application/json'});
+    const form = new FormData();
+    form.append('metadata', new Blob([JSON.stringify({name:'state.json', parents: data.files?.length ? undefined : [driveFolderId]})], {type:'application/json'}));
+    form.append('file', blob);
+
+    if (data.files && data.files.length > 0) {
+      await fetch(`https://www.googleapis.com/upload/drive/v3/files/${data.files[0].id}?uploadType=multipart`, {
+        method: 'PATCH',
+        headers: {Authorization: `Bearer ${driveAccessToken}`},
+        body: form
+      });
+    } else {
+      await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: {Authorization: `Bearer ${driveAccessToken}`},
+        body: form
+      });
+    }
+    setSyncStatus('ok', 'saved');
+  } catch(e) {
+    setSyncStatus('err', 'save error');
+  }
+}
+
+function disconnectDrive() {
+  driveConnected = false;
+  driveAccessToken = null;
+  driveFolderId = null;
+  localStorage.removeItem(CLIENT_ID_KEY);
+  document.getElementById('driveBtn').textContent = 'Connect Drive';
+  setSyncStatus('', 'not connected');
+  renderSettings();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+function init() {
+  loadLocal();
+  updateReviewBadge();
+  renderDashboard();
+  checkDriveCallback();
+
+  // Auto-reconnect silently if we have a stored Client ID and aren't already connected
+  if (!driveConnected) {
+    const storedClientId = localStorage.getItem(CLIENT_ID_KEY);
+    if (storedClientId) {
+      setSyncStatus('syncing', 'reconnecting…');
+      startDriveAuth(storedClientId, true);
+    }
+  }
+}
+
+init();
+</script>
+</body>
+</html>
